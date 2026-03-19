@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>粉色 TodoList</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --pink-100:#fff0f3;--pink-200:#ffd6e0;--pink-300:#ffb3c6;
+  --pink-400:#ff8fab;--pink-500:#ff6b8a;--pink-600:#e05278;
+  --pink-700:#c9376b;--bg:#fff5f7;--text:#4a2040;--text-light:#8a6080;
+  --shadow:0 2px 12px rgba(200,80,120,0.10);
+  --radius:16px;
+}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+
+/* ===== App Shell ===== */
+#app{max-width:430px;margin:0 auto;height:100vh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:var(--bg)}
+
+/* ===== Header ===== */
+.header{padding:16px 20px 8px;background:linear-gradient(135deg,var(--pink-400),var(--pink-500));color:#fff;border-radius:0 0 24px 24px;flex-shrink:0;position:relative;z-index:10}
+.header h1{font-size:20px;font-weight:700;letter-spacing:1px}
+.header-date{font-size:13px;opacity:0.85;margin-top:2px}
+
+/* ===== Tab Bar ===== */
+.tabs{display:flex;gap:4px;padding:12px 20px 8px;flex-shrink:0}
+.tab{flex:1;text-align:center;padding:8px 0;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;transition:all .25s;background:var(--pink-100);color:var(--pink-600)}
+.tab.active{background:var(--pink-500);color:#fff;box-shadow:0 2px 8px rgba(255,107,138,0.35)}
+
+/* ===== Main Content ===== */
+.main{flex:1;overflow-y:auto;overflow-x:hidden;padding:8px 16px 100px;-webkit-overflow-scrolling:touch}
+.main::-webkit-scrollbar{display:none}
+
+/* ===== Calendar Nav ===== */
+.cal-nav{display:flex;align-items:center;justify-content:space-between;padding:8px 4px;margin-bottom:8px}
+.cal-nav button{width:36px;height:36px;border:none;border-radius:50%;background:var(--pink-100);color:var(--pink-600);font-size:18px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center}
+.cal-nav button:active{background:var(--pink-300);transform:scale(0.9)}
+.cal-nav .cal-title{font-size:16px;font-weight:700;color:var(--text)}
+
+/* ===== Year View ===== */
+.year-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.mini-month{background:#fff;border-radius:var(--radius);padding:10px;box-shadow:var(--shadow);cursor:pointer;transition:transform .2s}
+.mini-month:active{transform:scale(0.96)}
+.mini-month-title{font-size:12px;font-weight:700;color:var(--pink-600);margin-bottom:6px;text-align:center}
+.mini-month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;font-size:8px;color:var(--text-light);text-align:center}
+.mini-month-grid .mm-day{width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:50%;position:relative}
+.mini-month-grid .mm-day.today{background:var(--pink-400);color:#fff;font-weight:700}
+.mini-month-grid .mm-day.has-task::after{content:'';position:absolute;bottom:0;width:4px;height:4px;border-radius:50%;background:var(--pink-500)}
+
+/* ===== Month View ===== */
+.weekday-row{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:11px;font-weight:600;color:var(--pink-400);margin-bottom:4px;padding:0 2px}
+.month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;padding:0 2px}
+.month-cell{background:#fff;border-radius:12px;min-height:64px;padding:4px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;box-shadow:0 1px 4px rgba(200,80,120,0.06)}
+.month-cell:active{transform:scale(0.95)}
+.month-cell.other-month{opacity:0.35}
+.month-cell.today{border:2px solid var(--pink-400);background:var(--pink-100)}
+.month-cell .day-num{font-size:12px;font-weight:700;color:var(--text);text-align:right;padding:0 2px}
+.month-cell.today .day-num{color:var(--pink-600)}
+.month-cell .cell-tasks{margin-top:2px}
+.cell-task-dot{font-size:8px;line-height:1.3;padding:1px 3px;border-radius:4px;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff}
+
+/* ===== Week View ===== */
+.week-grid{display:flex;flex-direction:column;gap:6px}
+.week-day-row{display:flex;gap:8px;background:#fff;border-radius:var(--radius);padding:10px;box-shadow:var(--shadow);cursor:pointer;transition:transform .2s;min-height:60px}
+.week-day-row:active{transform:scale(0.98)}
+.week-day-row.today{border:2px solid var(--pink-400);background:var(--pink-100)}
+.week-day-label{width:42px;flex-shrink:0;text-align:center}
+.week-day-label .wdn{font-size:11px;color:var(--text-light);font-weight:600}
+.week-day-label .wdd{font-size:20px;font-weight:800;color:var(--text)}
+.week-day-row.today .wdd{color:var(--pink-600)}
+.week-tasks{flex:1;display:flex;flex-direction:column;gap:4px;justify-content:center}
+
+/* ===== Day View ===== */
+.day-header{text-align:center;padding:8px 0 12px}
+.day-header .big-date{font-size:48px;font-weight:800;color:var(--pink-500)}
+.day-header .day-info{font-size:13px;color:var(--text-light)}
+
+/* ===== Task Item (list) ===== */
+.task-item{display:flex;align-items:center;gap:10px;background:#fff;border-radius:var(--radius);padding:12px 14px;box-shadow:var(--shadow);transition:all .3s;margin-bottom:8px;position:relative;overflow:hidden}
+.task-item.done{opacity:0.6}
+.task-item .color-bar{width:4px;height:100%;position:absolute;left:0;top:0;border-radius:4px 0 0 4px}
+.task-item .task-check{width:24px;height:24px;border-radius:50%;border:2px solid var(--pink-300);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .25s;margin-left:8px}
+.task-item .task-check:active{transform:scale(0.85)}
+.task-item.done .task-check{background:var(--pink-400);border-color:var(--pink-400)}
+.task-item.done .task-check::after{content:'✓';color:#fff;font-size:14px;font-weight:700}
+.task-item .task-body{flex:1;min-width:0}
+.task-item .task-title{font-size:14px;font-weight:600;transition:all .3s}
+.task-item.done .task-title{text-decoration:line-through;color:var(--text-light)}
+.task-item .task-meta{display:flex;gap:8px;align-items:center;margin-top:4px;font-size:11px;color:var(--text-light)}
+.task-badge{padding:2px 8px;border-radius:8px;font-size:10px;font-weight:600;color:#fff}
+.task-ddl{display:flex;align-items:center;gap:3px}
+.task-ddl .ddl-icon{font-size:12px}
+.task-progress-bar{width:60px;height:5px;background:var(--pink-100);border-radius:3px;overflow:hidden}
+.task-progress-bar-fill{height:100%;border-radius:3px;transition:width .3s}
+.task-delete{width:28px;height:28px;border:none;border-radius:50%;background:var(--pink-100);color:var(--pink-400);font-size:14px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .2s;opacity:0.5}
+.task-delete:active{background:var(--pink-300);color:#fff;transform:scale(0.9)}
+
+/* ===== Inline Task (calendar cells / week rows) ===== */
+.inline-task{font-size:10px;padding:2px 5px;border-radius:5px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4}
+.inline-task.done{text-decoration:line-through;opacity:0.6}
+
+/* ===== FAB ===== */
+.fab{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);width:200px;height:50px;border:none;border-radius:25px;background:linear-gradient(135deg,var(--pink-400),var(--pink-600));color:#fff;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 4px 20px rgba(255,107,138,0.45);z-index:100;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .25s;letter-spacing:1px}
+.fab:active{transform:translateX(-50%) scale(0.94)}
+.fab .plus{font-size:22px;font-weight:300}
+
+/* ===== Modal ===== */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:200;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s}
+.modal-overlay.show{opacity:1;pointer-events:auto}
+.modal{width:100%;max-width:430px;background:#fff;border-radius:24px 24px 0 0;padding:24px 20px 32px;transform:translateY(100%);transition:transform .35s cubic-bezier(0.32,0.72,0,1)}
+.modal-overlay.show .modal{transform:translateY(0)}
+.modal-handle{width:40px;height:4px;border-radius:2px;background:var(--pink-200);margin:0 auto 16px}
+.modal h2{font-size:18px;font-weight:700;color:var(--text);margin-bottom:16px;text-align:center}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:12px;font-weight:600;color:var(--text-light);margin-bottom:6px}
+.form-group input,.form-group select{width:100%;padding:12px 14px;border:2px solid var(--pink-200);border-radius:12px;font-size:15px;color:var(--text);outline:none;transition:border .2s;background:#fff;font-family:inherit}
+.form-group input:focus,.form-group select:focus{border-color:var(--pink-400)}
+.form-group input::placeholder{color:var(--pink-200)}
+
+/* Color picker */
+.color-options{display:flex;gap:10px;flex-wrap:wrap}
+.color-opt{width:32px;height:32px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:all .2s;position:relative}
+.color-opt:active{transform:scale(0.9)}
+.color-opt.selected{border-color:var(--text);transform:scale(1.15)}
+.color-opt.selected::after{content:'✓';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700}
+
+/* Progress slider */
+.progress-slider{width:100%;-webkit-appearance:none;height:8px;border-radius:4px;background:var(--pink-100);outline:none}
+.progress-slider::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--pink-400);cursor:pointer;box-shadow:0 2px 6px rgba(255,107,138,0.4)}
+.progress-val{font-size:14px;font-weight:700;color:var(--pink-500);margin-left:8px}
+
+.modal-submit{width:100%;padding:14px;border:none;border-radius:14px;background:linear-gradient(135deg,var(--pink-400),var(--pink-600));color:#fff;font-size:16px;font-weight:700;cursor:pointer;margin-top:8px;transition:all .2s;letter-spacing:1px}
+.modal-submit:active{transform:scale(0.97);opacity:0.9}
+
+/* ===== Celebration ===== */
+.confetti-container{position:fixed;inset:0;pointer-events:none;z-index:999}
+.confetti{position:absolute;width:10px;height:10px;border-radius:2px;animation:confetti-fall 1.2s ease-out forwards}
+@keyframes confetti-fall{
+  0%{opacity:1;transform:translateY(0) rotate(0deg) scale(1)}
+  100%{opacity:0;transform:translateY(600px) rotate(720deg) scale(0.3)}
+}
+
+/* ===== Scrollbar hide ===== */
+.main::-webkit-scrollbar{display:none}
+
+/* ===== Empty State ===== */
+.empty-state{text-align:center;padding:40px 20px;color:var(--pink-300)}
+.empty-state .empty-icon{font-size:48px;margin-bottom:12px}
+.empty-state p{font-size:14px}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- Header -->
+  <div class="header">
+    <h1>🌸 My Todo</h1>
+    <div class="header-date" id="headerDate"></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" data-view="year">年</div>
+    <div class="tab" data-view="month">月</div>
+    <div class="tab" data-view="week">周</div>
+    <div class="tab" data-view="day">日</div>
+  </div>
+
+  <!-- Main -->
+  <div class="main" id="mainContent"></div>
+
+  <!-- FAB -->
+  <button class="fab" id="fabBtn"><span class="plus">+</span> Add Task</button>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>新建任务</h2>
+    <div class="form-group">
+      <label>任务名称</label>
+      <input type="text" id="taskTitle" placeholder="输入任务内容…" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label>截止日期 (DDL)</label>
+      <input type="date" id="taskDDL">
+    </div>
+    <div class="form-group">
+      <label>颜色标签</label>
+      <div class="color-options" id="colorOptions"></div>
+    </div>
+    <div class="form-group">
+      <label>进度 <span class="progress-val" id="progressVal">0%</span></label>
+      <input type="range" class="progress-slider" id="taskProgress" min="0" max="100" value="0">
+    </div>
+    <button class="modal-submit" id="modalSubmit">✨ 添加任务</button>
+  </div>
+</div>
+
+<!-- Confetti container -->
+<div class="confetti-container" id="confettiContainer"></div>
+
+<script>
+/* ===== Color Palette ===== */
+const COLORS = [
+  {name:'樱花粉',hex:'#ff6b8a'},
+  {name:'玫瑰红',hex:'#e05278'},
+  {name:'珊瑚橘',hex:'#ff8fab'},
+  {name:'薰衣紫',hex:'#c084cf'},
+  {name:'桃粉',hex:'#f472b6'},
+  {name:'莓果',hex:'#be185d'},
+  {name:'蜜桃',hex:'#fb923c'},
+  {name:'丁香',hex:'#a78bfa'},
+];
+
+const WEEKDAYS = ['日','一','二','三','四','五','六'];
+const WEEKDAYS_SHORT = ['日','一','二','三','四','五','六'];
+
+/* ===== State ===== */
+let currentView = 'month';
+let viewDate = new Date();
+let tasks = JSON.parse(localStorage.getItem('pink_tasks') || '[]');
+let selectedColor = COLORS[0].hex;
+let editingTaskId = null;
+
+/* ===== Helpers ===== */
+const $ = s => document.querySelector(s);
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+const isToday = (y,m,d) => { const t = new Date(); return t.getFullYear()===y && t.getMonth()===m && t.getDate()===d; };
+const dateKey = (y,m,d) => `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+const tasksOnDate = dk => tasks.filter(t => t.ddl === dk);
+const saveTasks = () => localStorage.setItem('pink_tasks', JSON.stringify(tasks));
+const daysInMonth = (y,m) => new Date(y,m+1,0).getDate();
+const firstDayOfMonth = (y,m) => new Date(y,m,1).getDay();
+
+function ddlCountdown(ddlStr) {
+  if (!ddlStr) return '';
+  const diff = Math.ceil((new Date(ddlStr+'T23:59:59') - new Date()) / 86400000);
+  if (diff < 0) return `已过期 ${-diff}天`;
+  if (diff === 0) return '今天截止';
+  if (diff === 1) return '明天截止';
+  return `${diff}天后`;
+}
+
+/* ===== Init Color Picker ===== */
+function initColorPicker() {
+  const wrap = $('#colorOptions');
+  wrap.innerHTML = COLORS.map(c =>
+    `<div class="color-opt${c.hex===selectedColor?' selected':''}" data-color="${c.hex}" style="background:${c.hex}" title="${c.name}"></div>`
+  ).join('');
+  wrap.onclick = e => {
+    const opt = e.target.closest('.color-opt');
+    if (!opt) return;
+    selectedColor = opt.dataset.color;
+    wrap.querySelectorAll('.color-opt').forEach(o => o.classList.toggle('selected', o===opt));
+  };
+}
+
+/* ===== Render Header ===== */
+function renderHeader() {
+  const now = new Date();
+  const opts = {year:'numeric',month:'long',day:'numeric',weekday:'long'};
+  $('#headerDate').textContent = now.toLocaleDateString('zh-CN', opts);
+}
+
+/* ===== Render Tabs ===== */
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    currentView = tab.dataset.view;
+    render();
+  });
+});
+
+/* ===== Calendar Navigation HTML ===== */
+function calNav(title) {
+  return `<div class="cal-nav">
+    <button id="navPrev">‹</button>
+    <span class="cal-title">${title}</span>
+    <button id="navNext">›</button>
+  </div>`;
+}
+
+function bindNav(prevFn, nextFn) {
+  $('#navPrev').onclick = () => { prevFn(); render(); };
+  $('#navNext').onclick = () => { nextFn(); render(); };
+}
+
+/* ===== YEAR VIEW ===== */
+function renderYear() {
+  const y = viewDate.getFullYear();
+  let html = calNav(`${y} 年`);
+  html += '<div class="year-grid">';
+  for (let m = 0; m < 12; m++) {
+    html += `<div class="mini-month" data-month="${m}">`;
+    html += `<div class="mini-month-title">${m+1}月</div>`;
+    html += '<div class="mini-month-grid">';
+    const fd = firstDayOfMonth(y,m);
+    const dim = daysInMonth(y,m);
+    for (let i=0;i<fd;i++) html += '<div class="mm-day"></div>';
+    for (let d=1;d<=dim;d++) {
+      const cls = [];
+      if (isToday(y,m,d)) cls.push('today');
+      if (tasksOnDate(dateKey(y,m,d)).length) cls.push('has-task');
+      html += `<div class="mm-day ${cls.join(' ')}">${d}</div>`;
+    }
+    html += '</div></div>';
+  }
+  html += '</div>';
+  $('#mainContent').innerHTML = html;
+  bindNav(() => viewDate.setFullYear(y-1), () => viewDate.setFullYear(y+1));
+  document.querySelectorAll('.mini-month').forEach(el => {
+    el.onclick = () => {
+      viewDate = new Date(y, parseInt(el.dataset.month), 1);
+      currentView = 'month';
+      document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.view==='month'));
+      render();
+    };
+  });
+}
+
+/* ===== MONTH VIEW ===== */
+function renderMonth() {
+  const y = viewDate.getFullYear();
+  const m = viewDate.getMonth();
+  let html = calNav(`${y}年 ${m+1}月`);
+  html += '<div class="weekday-row">';
+  WEEKDAYS.forEach(w => html += `<div>${w}</div>`);
+  html += '</div><div class="month-grid">';
+  const fd = firstDayOfMonth(y,m);
+  const dim = daysInMonth(y,m);
+  const prevDim = daysInMonth(y,m-1);
+  // prev month
+  for (let i=fd-1;i>=0;i--) {
+    const d = prevDim - i;
+    html += `<div class="month-cell other-month"><div class="day-num">${d}</div></div>`;
+  }
+  // current month
+  for (let d=1;d<=dim;d++) {
+    const dk = dateKey(y,m,d);
+    const t = isToday(y,m,d);
+    const dayTasks = tasksOnDate(dk);
+    html += `<div class="month-cell${t?' today':''}" data-date="${dk}">`;
+    html += `<div class="day-num">${d}</div><div class="cell-tasks">`;
+    dayTasks.slice(0,3).forEach(tk => {
+      html += `<div class="cell-task-dot${tk.done?' done':''}" style="background:${tk.color}">${tk.title}</div>`;
+    });
+    if (dayTasks.length > 3) html += `<div style="font-size:8px;color:var(--text-light)">+${dayTasks.length-3}</div>`;
+    html += '</div></div>';
+  }
+  // next month fill
+  const total = fd + dim;
+  const fill = total <= 35 ? 35 - total : 42 - total;
+  for (let i=1;i<=fill;i++) {
+    html += `<div class="month-cell other-month"><div class="day-num">${i}</div></div>`;
+  }
+  html += '</div>';
+  $('#mainContent').innerHTML = html;
+  bindNav(() => viewDate.setMonth(m-1), () => viewDate.setMonth(m+1));
+  document.querySelectorAll('.month-cell:not(.other-month)').forEach(el => {
+    el.onclick = () => {
+      viewDate = new Date(el.dataset.date + 'T00:00:00');
+      currentView = 'day';
+      document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.view==='day'));
+      render();
+    };
+  });
+}
+
+/* ===== WEEK VIEW ===== */
+function getWeekStart(d) {
+  const dt = new Date(d);
+  dt.setDate(dt.getDate() - dt.getDay());
+  dt.setHours(0,0,0,0);
+  return dt;
+}
+function renderWeek() {
+  const ws = getWeekStart(viewDate);
+  const we = new Date(ws); we.setDate(we.getDate()+6);
+  const title = `${ws.getMonth()+1}/${ws.getDate()} - ${we.getMonth()+1}/${we.getDate()}`;
+  let html = calNav(title);
+  html += '<div class="week-grid">';
+  for (let i=0;i<7;i++) {
+    const d = new Date(ws);
+    d.setDate(d.getDate()+i);
+    const dk = dateKey(d.getFullYear(),d.getMonth(),d.getDate());
+    const t = dk === today();
+    const dayTasks = tasksOnDate(dk);
+    html += `<div class="week-day-row${t?' today':''}" data-date="${dk}">`;
+    html += `<div class="week-day-label"><div class="wdn">${WEEKDAYS_SHORT[d.getDay()]}</div><div class="wdd">${d.getDate()}</div></div>`;
+    html += '<div class="week-tasks">';
+    if (dayTasks.length === 0) {
+      html += '<div style="font-size:12px;color:var(--pink-200)">暂无任务</div>';
+    }
+    dayTasks.forEach(tk => {
+      html += `<div class="inline-task${tk.done?' done':''}" style="background:${tk.color}">${tk.title}${tk.progress>0?' ('+tk.progress+'%)':''}</div>`;
+    });
+    html += '</div></div>';
+  }
+  html += '</div>';
+  $('#mainContent').innerHTML = html;
+  bindNav(
+    () => viewDate.setDate(viewDate.getDate()-7),
+    () => viewDate.setDate(viewDate.getDate()+7)
+  );
+  document.querySelectorAll('.week-day-row').forEach(el => {
+    el.onclick = () => {
+      viewDate = new Date(el.dataset.date + 'T00:00:00');
+      currentView = 'day';
+      document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.view==='day'));
+      render();
+    };
+  });
+}
+
+/* ===== DAY VIEW ===== */
+function renderDay() {
+  const y = viewDate.getFullYear();
+  const m = viewDate.getMonth();
+  const d = viewDate.getDate();
+  const dk = dateKey(y,m,d);
+  const dayTasks = tasksOnDate(dk);
+  let html = calNav(`${y}年${m+1}月`);
+  html += `<div class="day-header">
+    <div class="big-date">${d}</div>
+    <div class="day-info">${WEEKDAYS[viewDate.getDay()]}  ·  ${dayTasks.filter(t=>t.done).length}/${dayTasks.length} 已完成</div>
+  </div>`;
+  if (dayTasks.length === 0) {
+    html += '<div class="empty-state"><div class="empty-icon">🌷</div><p>这一天还没有任务哦<br>点击下方按钮添加</p></div>';
+  }
+  dayTasks.forEach(tk => {
+    const countdown = ddlCountdown(tk.ddl);
+    html += `<div class="task-item${tk.done?' done':''}" data-id="${tk.id}">
+      <div class="color-bar" style="background:${tk.color}"></div>
+      <div class="task-check" data-id="${tk.id}"></div>
+      <div class="task-body">
+        <div class="task-title">${tk.title}</div>
+        <div class="task-meta">
+          <span class="task-badge" style="background:${tk.color}">${tk.progress}%</span>
+          ${countdown ? `<span class="task-ddl"><span class="ddl-icon">⏰</span>${countdown}</span>` : ''}
+          <div class="task-progress-bar"><div class="task-progress-bar-fill" style="width:${tk.progress}%;background:${tk.color}"></div></div>
+        </div>
+      </div>
+      <button class="task-delete" data-id="${tk.id}">✕</button>
+    </div>`;
+  });
+  $('#mainContent').innerHTML = html;
+  bindNav(
+    () => viewDate.setDate(viewDate.getDate()-1),
+    () => viewDate.setDate(viewDate.getDate()+1)
+  );
+  // Task check toggle
+  document.querySelectorAll('.task-check').forEach(el => {
+    el.onclick = e => {
+      e.stopPropagation();
+      const tk = tasks.find(t=>t.id===el.dataset.id);
+      if (tk) {
+        tk.done = !tk.done;
+        if (tk.done) { tk.progress = 100; celebrate(); }
+        saveTasks(); render();
+      }
+    };
+  });
+  // Delete
+  document.querySelectorAll('.task-delete').forEach(el => {
+    el.onclick = e => {
+      e.stopPropagation();
+      tasks = tasks.filter(t=>t.id!==el.dataset.id);
+      saveTasks(); render();
+    };
+  });
+}
+
+/* ===== Render Router ===== */
+function render() {
+  renderHeader();
+  ({year:renderYear, month:renderMonth, week:renderWeek, day:renderDay})[currentView]();
+}
+
+/* ===== Modal ===== */
+function openModal(prefillDate) {
+  editingTaskId = null;
+  $('#taskTitle').value = '';
+  $('#taskDDL').value = prefillDate || today();
+  $('#taskProgress').value = 0;
+  $('#progressVal').textContent = '0%';
+  selectedColor = COLORS[0].hex;
+  initColorPicker();
+  $('#modalOverlay').classList.add('show');
+  setTimeout(() => $('#taskTitle').focus(), 350);
+}
+function closeModal() { $('#modalOverlay').classList.remove('show'); }
+
+$('#fabBtn').onclick = () => {
+  let prefill = today();
+  if (currentView === 'day') {
+    const y=viewDate.getFullYear(),m=viewDate.getMonth(),d=viewDate.getDate();
+    prefill = dateKey(y,m,d);
+  }
+  openModal(prefill);
+};
+$('#modalOverlay').onclick = e => { if (e.target === $('#modalOverlay')) closeModal(); };
+$('#taskProgress').oninput = e => { $('#progressVal').textContent = e.target.value + '%'; };
+
+$('#modalSubmit').onclick = () => {
+  const title = $('#taskTitle').value.trim();
+  if (!title) { $('#taskTitle').style.borderColor='red'; $('#taskTitle').focus(); return; }
+  const task = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+    title,
+    ddl: $('#taskDDL').value,
+    color: selectedColor,
+    progress: parseInt($('#taskProgress').value),
+    done: false,
+    created: new Date().toISOString()
+  };
+  if (task.progress === 100) task.done = true;
+  tasks.push(task);
+  saveTasks();
+  closeModal();
+  // Navigate to the task's day
+  if (task.ddl) {
+    viewDate = new Date(task.ddl + 'T00:00:00');
+    currentView = 'day';
+    document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.view==='day'));
+  }
+  render();
+  if (task.done) celebrate();
+};
+
+/* ===== Celebration ===== */
+function celebrate() {
+  const container = $('#confettiContainer');
+  const colors = COLORS.map(c=>c.hex);
+  for (let i=0; i<40; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti';
+    el.style.left = Math.random()*100 + '%';
+    el.style.top = '-10px';
+    el.style.background = colors[Math.floor(Math.random()*colors.length)];
+    el.style.width = (6+Math.random()*8)+'px';
+    el.style.height = (6+Math.random()*8)+'px';
+    el.style.animationDuration = (0.8+Math.random()*0.8)+'s';
+    el.style.animationDelay = (Math.random()*0.4)+'s';
+    container.appendChild(el);
+    setTimeout(()=>el.remove(), 2000);
+  }
+}
+
+/* ===== Boot ===== */
+initColorPicker();
+render();
+</script>
+</body>
+</html>
